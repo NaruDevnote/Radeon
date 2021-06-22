@@ -31,7 +31,7 @@ module.exports = async client => {
 
     client.infoEmb = (msg, ctx) => {
         const e = new MessageEmbed()
-        .setDescription('ℹ️ '+ msg)
+        .setDescription('<:info:846179402773168159> '+ msg)
         .setColor(0x0054d1);
         if (ctx instanceof Message) {
             return ctx.channel.send(e);

@@ -15,19 +15,20 @@ module.exports = {
     description: 'Role Tools: Allows for viewing, creating, deleting, and assigning roles using the subcommands below.',
     usage: 'role <User:Mention/ID> <Role:Name/Mention/ID>\nrole c/create <Name> [Color:Hex/Decimal] [Permissions:Bitfield] [Hoisted:True/False] [Mentionable:True/False]\nrole d/delete <Role:Name/Mention/ID>',
     cooldown: 4,
-    botPerms: 268435456,
+    botPerms: 268435456n,
     guildOnly: true,
+    roleBypass: true,
     async run(client, message, args) {
         if (!args.length) return client.errEmb('No Subcommand Specified. See `help role` for more information.', message);
         const sub = args[0].toLowerCase();
 
         if (/(?:<@!?)?\d{17,19}>?/g.test(sub)) {
-            if (!message.member.permissions.has(268435456)) return message.channel.send('You are missing the `Manage Roles` permission(s) to use this command.');
-            const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
+            if (!message.member.permissions.has(268435456n)) return message.channel.send('You are missing the `Manage Roles` permission(s) to use this command.');
+            const target = message.mentions.members.first() || await message.guild.members.fetch(args[0]);
             if (!target) return client.errEmb('Invalid Member Specified.', message);
             const role = message.mentions.roles.first()
-            || message.guild.roles.resolve(args.slice(1).join(' '))
-            || message.guild.roles.cache.find(r => r.name.toLowerCase() == args.slice(1).join(' ').toLowerCase());
+                || message.guild.roles.resolve(args.slice(1).join(' '))
+                || message.guild.roles.cache.find(r => r.name.toLowerCase() == args.slice(1).join(' ').toLowerCase());
             if (!role) return client.errEmb('Unknown Role Specified.', message);
             if (role.managed) return client.errEmb('Cannot Manage Integration/Service Roles.', message);
             if (role.comparePositionTo(message.guild.me.roles.highest) >= 0) return client.errEmb('Cannot Manage Roles Higher or Equal to Radeon.', message);
@@ -44,12 +45,12 @@ module.exports = {
             }
 
         } else if (sub === 'c' || sub === 'create') {
-            if (!message.member.permissions.has(268435456)) return message.channel.send('You are missing the `Manage Roles` permission(s) to use this command.');
+            if (!message.member.permissions.has(268435456n)) return message.channel.send('You are missing the `Manage Roles` permission(s) to use this command.');
             if (!args[1]) return client.errEmb('No Name Provided.\n```\nrole create <Name> [Color:Hex/Decimal] [Permissions:Bitfield] [Hoisted:True/False] [Mentionable:True/False]\n```', message);
             const rname = parseQuotes(args.slice(1).join(' '), true);
             let rcolor = 0, rperms = 0, rhoist = false, rmention = false;
             if (args[2]) rcolor = args[2];
-            if (args[3]) rperms = parseInt(args[3]);
+            if (args[3]) rperms = BigInt(args[3]);
             if (args[4]) rhoist = Boolean(args[4]);
             if (args[5]) rmention = Boolean(args[5]);
             if (isNaN(rperms)) {
@@ -74,7 +75,7 @@ module.exports = {
             }
 
         } else if (sub === 'd' || sub === 'delete') {
-            if (!message.member.permissions.has(268435456)) return message.channel.send('You are missing the `Manage Roles` permission(s) to use this command.');
+            if (!message.member.permissions.has(268435456n)) return message.channel.send('You are missing the `Manage Roles` permission(s) to use this command.');
             if (!args[1]) return client.errEmb('No Role Specified.\n```\nrole delete <Role:Name/Mention/ID>\n```', message);
             const role = message.mentions.roles.first()
             || message.guild.roles.resolve(args.join(' '))

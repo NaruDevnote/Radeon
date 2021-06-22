@@ -18,7 +18,7 @@ module.exports = {
     async run(_, message) {
         message.channel.startTyping();
         const server = message.guild;
-        if (server.members.cache.size < Math.round(server.memberCount / 4)) await server.members.fetch();
+        if (server.members.cache.size < Math.round(server.memberCount / 2)) await server.members.fetch();
         const tc = server.channels.cache.filter(c => ['text','news','store'].includes(c.type));
         const vc = server.channels.cache.filter(c => c.type === 'voice');
         const roles = server.roles.cache.size;

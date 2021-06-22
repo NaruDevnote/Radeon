@@ -15,9 +15,10 @@ module.exports = {
     description: 'Deletes a number of messages in a channel (min 1, max 100).\n\n**Flags:**\n'+ flags,
     usage: 'clean <Amount:Number>\nclean <Amount:Number> <User:Mention/ID>\nclean <Amount:Number> <...Flags>',
     cooldown: 6,
-    userPerms: 8192,
-    botPerms: 8192,
+    userPerms: 8192n,
+    botPerms: 8192n,
     guildOnly: true,
+    roleBypass: true,
     async run(client, message, args) {
         if (!args.length) return client.errEmb('No Amount Specified.\n```\nclean <Amount:Number>\nclean <Amount:Number> [User:Mention/ID]\nclean <Amount:Number> [...Flags]\n```\n**Flags:**\n'+ flags, message);
         let amount = parseInt(args[0]);
@@ -46,16 +47,15 @@ module.exports = {
             try {
                 await message.delete().catch(()=>{});
                 const res = await advanceClean(message, amount, { target, flagUsers, flagBots, flagNopin, flagHas, flagTo, flagEmbeds });
-                return client.checkEmb(`Deleted ${res} Messages!`, message).then(m => setTimeout(() => m.delete(), 3000));
+                return client.checkEmb(`Deleted ${res} Messages!`, message).then(m => setTimeout(() => m.delete(), 2000));
             } catch (err) {
                 return client.errEmb(err.message, message);
             }
         } else {
-            if (amount < 100) amount += 1;
             try {
                 await message.delete().catch(()=>{});
                 const res = await message.channel.bulkDelete(amount, true);
-                return client.checkEmb(`Deleted ${res.size} Messages!`, message).then(m => setTimeout(() => m.delete(), 3000));
+                return client.checkEmb(`Deleted ${res.size} Messages!`, message).then(m => setTimeout(() => m.delete(), 2000));
             } catch (err) {
                 return client.errEmb(err.message, message);
             }

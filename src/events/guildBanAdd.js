@@ -9,6 +9,7 @@ const Guild = require('../schemas/guild-schema');
 
 exports.run = async (_, guild, user) => {
     const db = await Guild.findOne({ guildID: guild.id });
+    if (!db) return;
     const { modLogs } = db;
     if (!modLogs.channel || !modLogs.bans) return;
     const c = guild.channels.cache.get(modLogs.channel);

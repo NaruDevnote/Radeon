@@ -6,17 +6,10 @@
  */
 
 
-const { MessageEmbed } = require('discord.js');
 const { isBotStaff, isBotOwner, humanize } = require('../dist/functions');
 const { logError, logWarn } = require('../dist/console');
 const Guild = require('../schemas/guild-schema');
 const Settings = require('../schemas/settings-schema');
-
-const baseEmbed = (author, msg) => {
-    return new MessageEmbed()
-    .setDescription(msg).setColor(0x1e143b)
-    .setFooter(author.tag, author.displayAvatarURL({ dynamic: true }));
-}
 
 // Base Error Messages
 const EM = {
@@ -29,6 +22,19 @@ const EM = {
     errNoBotPerms: (p) => `I am missing the \`${humanize(p).join('`, `')}\` permission(s) for this command.`,
     errNoUserPerms: (p) => `You am missing the \`${humanize(p).join('`, `')}\` permission(s) for this command.`
 }
+
+const ACTION_CMDS = [
+    'slowmode',
+    'clean',
+    'mute',
+    'unmute',
+    'kick',
+    'ban',
+    'massban',
+    'unban',
+    'lock',
+    'unlock'
+];
 
 exports.run = async (client, message) => {
     // Partials handling
@@ -46,9 +52,8 @@ exports.run = async (client, message) => {
     }
 
     // Handling DM commands
-    // Disabled for the time being as intents dont work for it
-    /*
     if (!message.guild) {
+        if (message.channel.partial) await message.channel.fetch();
         const args = message.content.trim().split(/\s+|\n+/g);
         const cmd = args.shift().toLowerCase();
         if (!cmd.length) return;
@@ -56,7 +61,7 @@ exports.run = async (client, message) => {
         if (!command) return;
         if (lock) return channel.send(EM.errMain);
         if (command.guildOnly) {
-            return channel.send(EM.errGuildOnly(author));
+            return channel.send(EM.errGuildOnly);
         } else if (command.modOnly) {
             if (isBotStaff(author.id)) {
                 try {
@@ -68,7 +73,7 @@ exports.run = async (client, message) => {
                     return channel.send(EM.errNoExec(command.name));
                 }
             } else if (command.modOnly === 'warn') {
-                return channel.send(EM.errOwnerOnly(author));
+                return channel.send(EM.errOwnerOnly);
             } else if (command.modOnly === 'void') return;
         } else {
             try {
@@ -82,10 +87,9 @@ exports.run = async (client, message) => {
         }
         return;
     }
-    */
 
     // Fetching server database...
-    const data = await Guild.findOne(
+    const gData = await Guild.findOne(
         { guildID: message.guild.id },
         (err, guild) => {
             // fallback for guildCreate event failure,
@@ -100,7 +104,15 @@ exports.run = async (client, message) => {
     );
 
     // extracting all the necessary info
-    const { prefix, ignoredChannels, ignoredCommands, automod } = data;
+    const {
+        prefix,
+        actionLog,
+        deleteAfterExec,
+        cmdRoleBypass,
+        ignoredCommands,
+        ignoredChannels,
+        automod
+    } = gData;
 
     // pretty self-explanatory
     if (ignoredChannels.includes(channel.id)) return;
@@ -138,8 +150,8 @@ exports.run = async (client, message) => {
         if (ignoredCommands.includes(command.name)) return;
 
         // Checks for servers with shitty channel perms
-        if (!channel.permissionsFor(message.guild.me).has(2048)) return;
-        if (!channel.permissionsFor(message.guild.me).has(16384)) return channel.send(EM.errNoEmbeds);
+        if (!channel.permissionsFor(message.guild.me).has(2048n)) return;
+        if (!channel.permissionsFor(message.guild.me).has(16384n)) return channel.send(EM.errNoEmbeds);
 
         // Simplify handling cooldowns down to one line
         if (runCooldown(client, message, command)) return;
@@ -148,23 +160,28 @@ exports.run = async (client, message) => {
         if (command.modOnly) {
             if (command.modOnly < 3) {
                 if (!isBotOwner(author.id)) {
-                    if (command.modOnly == 2) return message.reply(EM.errOwnerOnly);
+                    if (command.modOnly === 2) return message.reply(EM.errOwnerOnly);
                 }
             } else {
                 if (!isBotStaff(author.id)) {
-                    if (command.modOnly == 4) return message.reply(EM.errAdminOnly);
+                    if (command.modOnly === 4) return message.reply(EM.errAdminOnly);
                 }
             }
         }
 
         // Handling commands with perms
         // This has been rewritten 3 times now :')
+        let bypass = false;
+        if (command.roleBypass && cmdRoleBypass.has(command.name)) {
+            const allowed = cmdRoleBypass.get(command.name);
+            bypass = message.member.roles.cache.some(r => allowed.includes(r.id));
+        }
         if (command.botPerms) {
             if (!message.guild.me.permissions.has(command.botPerms)) {
                 if (command.modBypass && !isBotStaff(author.id)) return message.reply(EM.errNoBotPerms(command.botPerms));
             }
         }
-        if (command.userPerms) {
+        if (command.userPerms && !bypass) {
             if (!message.member.permissions.has(command.userPerms)) {
                 if (command.modBypass && !isBotStaff(author.id)) return message.reply(EM.errNoUserPerms(command.userPerms));
             }
@@ -175,6 +192,8 @@ exports.run = async (client, message) => {
             logcmd(client, author, command, channel);
             client.stats.commands++;
             await command.run(client, message, args);
+            if (actionLog) logActionCmd(command.name, message, actionLog);
+            if (deleteAfterExec && ACTION_CMDS.includes(command.name)) message.delete().catch(()=>{});
         } catch (err) {
             logError(err, path, author.id);
             return channel.send(EM.errNoExec(command.name));
@@ -183,7 +202,7 @@ exports.run = async (client, message) => {
     } else {
         // Processing for automod
         if (!automod.active) return;
-        if (!channel.permissionsFor(message.guild.me).has(10240)) return;
+        if (!channel.permissionsFor(message.guild.me).has(10240n)) return; // 26624
         if (automod.invites || automod.massMention.active) {
             try {
                 await require('../functions/amod-main')(message, automod);
@@ -215,6 +234,18 @@ function logcmd(client, user, command, channel) {
     return;
 }
 
+// Action command logging
+function logActionCmd(cmd, ctx, log) {
+    if (!ACTION_CMDS.includes(log)) return;
+    const c = ctx.guild.channels.cache.get(log);
+    if (!c) return;
+    const e = new MessageEmbed()
+    .setAuthor(`${ctx.author.tag} (ID ${ctx.author.id})`, ctx.author.displayAvatarURL())
+    .setDescription(`Command Ran: ${cmd} - ${ctx.channel} (ID ${ctx.channel.id})`)
+    .setTimestamp();
+    return c.send(e).catch(()=>{});
+}
+
 // Command cooldown handling
 function runCooldown(client, message, command) {
     if (!command.cooldown) return;
@@ -240,14 +271,3 @@ function runCooldown(client, message, command) {
         return;
     }
 }
-
-// Removed from active use for now, might be removed
-// function checkRateLimit(client) {
-//     if (client.rlcount > 4) {
-//         client.rlcount--;
-//         return new Promise(res => setTimeout(res, 500));
-//     } else {
-//         client.rlcount++;
-//         return;
-//     }
-// }

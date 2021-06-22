@@ -5,19 +5,23 @@
 
 
 const { MessageEmbed } = require('discord.js');
+const Guild = require('../../schemas/guild-schema');
 
 module.exports = {
     name: 'unlock',
     tag: 'Unlocks a locked channel',
     description: 'Unlocks the triggering channel or a specified channel (allows the "everyone" role `Send Messages` permission).',
     usage: 'unlock [Channel:Mention/ID] [Reason:Text]',
-    userPerms: 16,
-    botPerms: 268435456,
+    userPerms: 16n,
+    botPerms: 268435456n,
     guildOnly: true,
+    roleBypass: true,
     async run(client, message, args) {
         let chan = message.channel;
         let reason = '(No Reason Specified)';
-        let role = message.guild.roles.everyone;
+        const data = await Guild.findOne({ guildID: message.guild.id }).catch(()=>{});
+        if (!data) return client.errEmb('Unkown: Failed Connecting To Server Database. Try contacting support.', message);
+        const role = message.guild.roles.resolve(data.everyoneRole) || message.guild.roles.everyone;
         if (args.length) {
             if (message.mentions.channels.size) {
                 chan = message.mentions.channels.first();
@@ -32,7 +36,7 @@ module.exports = {
         if (!chan.isText) return client.errEmb('Channel is not a Text Channel.', message);
         if (!chan.manageable) return client.errEmb('I don\'t have permissions to manage that channel.', message);
         if (chan.permissionOverwrites.has(role.id)) {
-            if (chan.permissionOverwrites.get(role.id).allow.has(2048)) return client.infoEmb('That Channel is Already Unlocked. Maybe you meant `lock`?', message);
+            if (chan.permissionOverwrites.get(role.id).allow.has(2048n)) return client.infoEmb('That Channel is Already Unlocked. Maybe you meant `lock`?', message);
         }
 
         try {

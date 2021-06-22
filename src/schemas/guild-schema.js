@@ -13,6 +13,15 @@ const guildSchema = Schema({
         required:           true
     },
     prefix:                 String,
+    actionLog:              String,
+    deleteAfterExec:        Boolean,
+    requireKickReason:      Boolean,
+    requireBanReason:       Boolean,
+    banMessage:             String,
+    cmdRoleBypass:{
+        type:               Map,
+        default:            new Map()
+    },
     modLogs:{
         channel:            String,
         kicks:{
@@ -41,12 +50,12 @@ const guildSchema = Schema({
         rateLimit:          Boolean,
         massMention:{
             active:         Boolean,
-            thres:{
+            threshold:{
                 type:       Number,
                 default:    5
             }
         },
-        badWords:{
+        filter:{
             active:         Boolean,
             list:{
                 type:       [String],

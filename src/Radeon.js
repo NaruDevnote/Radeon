@@ -15,15 +15,17 @@ const client = new Client({
         FLAGS.GUILD_BANS,
         FLAGS.GUILD_MEMBERS,
         FLAGS.GUILD_MESSAGES,
-        // FLAGS.DIRECT_MESSAGES
+        FLAGS.DIRECT_MESSAGES
     ],
     partials:[
         'GUILD_MEMBER',
+        'CHANNEL',
         'MESSAGE',
         'USER'
     ],
     allowedMentions:{
-        parse:['users']
+        parse:['users'],
+        repliedUser: true
     }
 });
 

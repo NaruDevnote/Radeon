@@ -8,7 +8,6 @@ const { MessageEmbed } = require('discord.js');
 const Guild = require('../schemas/guild-schema');
 
 exports.run = async (_, member) => {
-    if (member.partial) member = await member.fetch();
     const db = await Guild.findOne({ guildID: member.guild.id });
     const { modLogs } = db;
     if (!modLogs.channel || !modLogs.kicks) return;

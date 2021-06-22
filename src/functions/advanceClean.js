@@ -9,12 +9,8 @@ const { Collection } = require('discord.js');
 
 module.exports = async (message, amount, options) => {
     const { target, flagUsers, flagBots, flagNopin, flagHas, flagTo, flagEmbeds } = options;
-    let filtered = new Collection(), count = 0, messages;
-    if (flagTo) {
-        messages = await message.channel.messages.fetch({ limit: 100, after: flagTo });
-    } else {
-        messages = await message.channel.messages.fetch({ limit: 100 });
-    }
+    let filtered = new Collection(), count = 0;
+    const messages = await message.channel.messages.fetch({ limit: 100, after: flagTo || null });
 
     if (target || flagUsers || flagBots) {
         messages.forEach(msg => {

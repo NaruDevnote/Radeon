@@ -25,7 +25,7 @@ module.exports = {
             if (embed.footer) {
                 if (embed.footer.text == undefined && embed.footer.icon_url != undefined) embed.footer.text = '\u200b';
             }
-            return await message.channel.send({ embed });
+            return await message.channel.send({ embeds: [embed] });
         } catch (err) {
             return client.errEmb(err.message, message);
         }

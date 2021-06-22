@@ -19,10 +19,7 @@ module.exports = {
     guildOnly: true,
     async run(client, message, args) {
         let target = message.member;
-        if (args.length) {
-            if (new RegExp(`(?:<@!?)?${client.user.id}>?`).test(args[0])) target = message.guild.me;
-            else target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
-        }
+        if (args.length) target = message.mentions.members.first() || await message.guild.members.fetch(args[0]);
         if (!target) return client.errEmb('Invalid Member Specified.', message);
         message.channel.startTyping();
         if (target.partial) target = await target.fetch();
@@ -78,16 +75,9 @@ module.exports = {
         }
         if (target.flags) target.flags.toArray().forEach(f => { if (flags[f]) totalf += flags[f] +' ' });
         if (member.premiumSince) totalf += ' <:boost_tier:789702536730509333>';
-        if (target.bot) {
-            if (target.flags.toArray().includes('VERIFIED_BOT')) {
-                totalf += '<:verified_bot:816434217646161930>';
-            } else {
-                totalf += '<:bot:816434217470001172>';
-            }
-        }
 
         const embed = new MessageEmbed()
-        .setTitle(target.tag)
+        .setTitle(`${target.bot ? 'Bot' : 'User'}: ${target.tag}`)
         .setDescription(totalf)
         .addField('ID', `${target.id}`, true)
         .addField('Avatar', `[Download Link 📥](${target.displayAvatarURL({ dynamic: true })})`, true)
